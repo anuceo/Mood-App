@@ -1,0 +1,16 @@
+# Node.js
+
+# Logs
+npm-debug.log
+
+# dependency local libraries
+node_modules/
+
+# React Native
+
+# build output
+android/app/build/
+ios/DerivedData/
+
+# environment variables
+.env
