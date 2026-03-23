@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth');
 const contentRoutes = require('./routes/content');
 const boardRoutes = require('./routes/boards');
+const userRoutes = require('./routes/users');
 
 const app = express();
 
@@ -23,6 +24,7 @@ if (process.env.NODE_ENV !== 'test') {
 app.use('/api/auth', authRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/boards', boardRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

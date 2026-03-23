@@ -8,7 +8,7 @@ const signToken = (userId) =>
 
 // POST /api/auth/signup
 const signup = async (req, res) => {
-  const { handle, email, password } = req.body;
+  const { handle, email, password, primaryMood } = req.body;
 
   const existing = await User.findOne({ $or: [{ handle }, { email }] });
   if (existing) {
@@ -16,7 +16,10 @@ const signup = async (req, res) => {
     return res.status(409).json({ message: `That ${field} is already taken` });
   }
 
-  const user = await User.create({ handle, email, password });
+  const userData = { handle, email, password };
+  if (primaryMood) userData.primaryMood = primaryMood;
+
+  const user = await User.create(userData);
   const token = signToken(user._id);
 
   res.status(201).json({ token, user: user.toPublicJSON() });

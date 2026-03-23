@@ -15,7 +15,7 @@ import React, {
   useReducer,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, boardApi, contentApi, setAuthToken, clearAuthToken } from '../services/api';
+import { authApi, boardApi, contentApi, setAuthToken, clearAuthToken, setUnauthorizedHandler } from '../services/api';
 
 // ─── State shape ──────────────────────────────────────────────────────────────
 
@@ -137,6 +137,15 @@ const AppContext = createContext(null);
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // ── 401 auto-logout ────────────────────────────────────────────────────────
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearAuthToken();
+      AsyncStorage.removeItem('auth');
+      dispatch({ type: 'LOGOUT' });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Restore token on app launch ────────────────────────────────────────────
   useEffect(() => {
     const restore = async () => {
@@ -158,10 +167,10 @@ export const AppProvider = ({ children }) => {
 
   // ── Auth actions ───────────────────────────────────────────────────────────
 
-  const signup = useCallback(async (handle, email, password) => {
+  const signup = useCallback(async (handle, email, password, primaryMood = null) => {
     dispatch({ type: 'AUTH_LOADING' });
     try {
-      const { token, user } = await authApi.signup(handle, email, password);
+      const { token, user } = await authApi.signup(handle, email, password, primaryMood);
       setAuthToken(token);
       await AsyncStorage.setItem('auth', JSON.stringify({ token, user }));
       dispatch({ type: 'AUTH_SUCCESS', token, user });

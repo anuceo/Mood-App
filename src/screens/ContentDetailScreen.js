@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   ScrollView,
   Share,
@@ -18,6 +19,7 @@ import { BackButton } from '../components/Header';
 import MoodTag from '../components/MoodTag';
 import ResonanceButton from '../components/ResonanceButton';
 import { useApp } from '../context/AppContext';
+import { boardApi } from '../services/api';
 import { colors, moods, spacing, textStyles, typography } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -27,7 +29,7 @@ const ContentDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const item = route?.params?.item ?? MOCK_ITEM;
 
-  const { toggleResonate } = useApp();
+  const { toggleResonate, boards, loadBoards } = useApp();
   const [paused, setPaused] = useState(true);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
@@ -43,12 +45,36 @@ const ContentDetailScreen = ({ route, navigation }) => {
     toggleResonate(item._id, resonated);
   };
 
-  const handleAddToBoard = () => {
-    navigation?.navigate('MoodPicker', {
-      onComplete: (selectedMoods) => {
-        // Board logic will hook in here once board management is built
-      },
-    });
+  const handleAddToBoard = async () => {
+    // Ensure boards are loaded
+    await loadBoards();
+
+    if (!boards.length) {
+      Alert.alert(
+        'No boards yet',
+        'Create a board on your profile first, then add vibes to it.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const options = boards.map((b) => b.name);
+    options.push('Cancel');
+
+    Alert.alert('Add to Board', 'Choose a board', [
+      ...boards.map((b) => ({
+        text: b.name,
+        onPress: async () => {
+          try {
+            await boardApi.addContent(b._id, item._id);
+            Alert.alert('Added ✦', `Saved to "${b.name}"`);
+          } catch (err) {
+            Alert.alert('Error', err.message ?? 'Could not add to board');
+          }
+        },
+      })),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const handleShare = async () => {

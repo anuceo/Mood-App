@@ -22,6 +22,7 @@ class ApiError extends Error {
 }
 
 let _token = null;
+let _onUnauthorized = null;
 
 /** Called by AppContext after login/signup to inject the token. */
 export const setAuthToken = (token) => {
@@ -31,6 +32,14 @@ export const setAuthToken = (token) => {
 /** Called on logout to clear the token. */
 export const clearAuthToken = () => {
   _token = null;
+};
+
+/**
+ * Register a callback that fires when any request receives a 401.
+ * AppContext uses this to auto-logout on expired/invalid tokens.
+ */
+export const setUnauthorizedHandler = (handler) => {
+  _onUnauthorized = handler;
 };
 
 const request = async (method, path, body = null, extraHeaders = {}) => {
@@ -47,6 +56,9 @@ const request = async (method, path, body = null, extraHeaders = {}) => {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     throw new ApiError(data.message ?? 'Request failed', res.status, data.errors);
   }
 
@@ -56,8 +68,8 @@ const request = async (method, path, body = null, extraHeaders = {}) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  signup: (handle, email, password) =>
-    request('POST', '/auth/signup', { handle, email, password }),
+  signup: (handle, email, password, primaryMood = null) =>
+    request('POST', '/auth/signup', { handle, email, password, ...(primaryMood && { primaryMood }) }),
 
   login: (email, password) =>
     request('POST', '/auth/login', { email, password }),
@@ -89,6 +101,18 @@ export const contentApi = {
 
   toggleResonate: (contentId, boardId = null) =>
     request('POST', `/content/${contentId}/resonate`, { boardId }),
+};
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+export const userApi = {
+  getProfile: (handle) =>
+    request('GET', `/users/${encodeURIComponent(handle)}`),
+
+  getResonances: (handle, { page = 1, limit = 20 } = {}) => {
+    const params = new URLSearchParams({ page, limit });
+    return request('GET', `/users/${encodeURIComponent(handle)}/resonances?${params}`);
+  },
 };
 
 // ─── Boards ───────────────────────────────────────────────────────────────────

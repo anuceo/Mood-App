@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
 import MoodTag from '../components/MoodTag';
+import { useApp } from '../context/AppContext';
 import { colors, moods, radius, spacing, textStyles, typography } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -47,8 +48,16 @@ const MOCK_BOARDS = [
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const profile = MOCK_PROFILE;
-  const primaryMoodData = moods[profile.primaryMood];
+  const { user, boards, loadBoards } = useApp();
+
+  // Load boards on mount if not yet loaded
+  useEffect(() => {
+    loadBoards();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fall back to mock data when user is not yet available
+  const profile = user ?? MOCK_PROFILE;
+  const primaryMoodData = moods[profile.primaryMood] ?? moods[MOCK_PROFILE.primaryMood];
 
   const handleEditProfile = () => {
     Alert.alert(
@@ -123,9 +132,9 @@ const ProfileScreen = ({ navigation }) => {
         {/* ─── Stats ─── */}
         <View style={styles.statsRow}>
           {[
-            { value: formatNumber(profile.resonanceCount), label: 'resonances' },
-            { value: String(profile.contentCount), label: 'vibes' },
-            { value: String(profile.boardCount), label: 'boards' },
+            { value: formatNumber(profile.resonanceCount ?? 0), label: 'resonances' },
+            { value: String(profile.contentCount ?? 0), label: 'vibes' },
+            { value: String(user ? boards.length : (profile.boardCount ?? 0)), label: 'boards' },
           ].map(({ value, label }) => (
             <GlassCard key={label} style={styles.statCard} intensity="medium">
               <Text style={styles.statValue}>{value}</Text>
@@ -138,7 +147,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={textStyles.heading2}>Mood DNA</Text>
           <View style={styles.moodDna}>
-            {profile.moodStats.map(({ mood, percent }) => {
+            {(profile.moodStats ?? MOCK_PROFILE.moodStats).map(({ mood, percent }) => {
               const md = moods[mood];
               return (
                 <View key={mood} style={styles.moodDnaRow}>
@@ -164,11 +173,12 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={textStyles.heading2}>Boards</Text>
           <View style={styles.boardsGrid}>
-            {MOCK_BOARDS.map((board) => {
-              const md = moods[board.mood];
+            {(user ? boards : MOCK_BOARDS).map((board) => {
+              const moodKey = board.primaryMood ?? board.mood ?? 'dreamy';
+              const md = moods[moodKey] ?? moods.dreamy;
               return (
                 <GlassCard
-                  key={board.id}
+                  key={board._id ?? board.id}
                   style={styles.boardCard}
                   glowColor={md.color}
                   intensity="medium"
@@ -181,7 +191,9 @@ const ProfileScreen = ({ navigation }) => {
                     <Text style={[styles.boardName, { color: colors.text.primary }]}>
                       {board.name}
                     </Text>
-                    <Text style={textStyles.caption}>{board.count} vibes</Text>
+                    <Text style={textStyles.caption}>
+                      {board.contentCount ?? board.count ?? 0} vibes
+                    </Text>
                   </LinearGradient>
                 </GlassCard>
               );

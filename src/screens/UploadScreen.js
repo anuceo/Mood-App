@@ -47,7 +47,19 @@ const UploadScreen = ({ navigation }) => {
       selectionLimit: 1,
     });
 
-    if (result.didCancel || !result.assets?.length) return;
+    if (result.didCancel) return;
+
+    if (result.errorCode) {
+      const messages = {
+        camera_unavailable: 'Camera is not available on this device.',
+        permission: 'Permission denied — please allow media access in Settings.',
+        others: result.errorMessage ?? 'Could not pick a video. Please try again.',
+      };
+      Alert.alert('Pick Failed', messages[result.errorCode] ?? messages.others);
+      return;
+    }
+
+    if (!result.assets?.length) return;
     setVideoUri(result.assets[0].uri);
   };
 

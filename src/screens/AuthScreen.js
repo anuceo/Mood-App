@@ -69,7 +69,7 @@ const AuthScreen = () => {
       if (mode === 'login') {
         await login(email.trim().toLowerCase(), password);
       } else {
-        await signup(handle.trim().toLowerCase(), email.trim().toLowerCase(), password);
+        await signup(handle.trim().toLowerCase(), email.trim().toLowerCase(), password, primaryMood);
       }
     } catch (e) {
       setLocalError(e.message);

@@ -23,7 +23,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
  * The background gradient shifts to reflect the currently selected mood,
  * giving users immediate, embodied feedback about their choice.
  */
-const MoodPickerScreen = ({ navigation, onComplete }) => {
+const MoodPickerScreen = ({ navigation, route, onComplete }) => {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState([]);
 
@@ -39,7 +39,8 @@ const MoodPickerScreen = ({ navigation, onComplete }) => {
 
   const handleContinue = () => {
     if (selected.length === 0) return;
-    onComplete?.(selected);
+    const callback = route?.params?.onComplete ?? onComplete;
+    callback?.(selected);
     navigation?.goBack();
   };
 
