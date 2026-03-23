@@ -87,6 +87,13 @@ const UploadScreen = ({ navigation }) => {
         isOriginal,
       });
 
+      // Reset form so a return visit doesn't re-post stale state
+      setVideoUri(null);
+      setSelectedMoods([]);
+      setCaption('');
+      setAttributionUrl('');
+      setIsOriginal(true);
+
       Alert.alert('Vibe posted ✦', 'Your content is live on the feed.', [
         { text: 'Nice!', onPress: () => navigation?.navigate('Home') },
       ]);

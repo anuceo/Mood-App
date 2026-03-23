@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -141,8 +141,34 @@ const MainTabs = () => (
 const AppNavigator = () => {
   const { user, authLoading } = useApp();
 
-  // While restoring the stored token show nothing (splash would go here)
-  if (authLoading) return null;
+  // Show branded splash while restoring the stored auth token
+  if (authLoading) {
+    return (
+      <View style={styles.splash}>
+        <LinearGradient
+          colors={[colors.bg.base, '#0D0B1E', colors.bg.base]}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.splashLogoWrap}>
+          <LinearGradient
+            colors={[colors.brand.primary, '#A855F7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.splashLogoGrad}
+          >
+            <Text style={styles.splashLogoText}>〜</Text>
+          </LinearGradient>
+        </View>
+        <Text style={styles.splashWordmark}>mood</Text>
+        <ActivityIndicator
+          size="small"
+          color={colors.brand.primary}
+          style={styles.splashSpinner}
+        />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
@@ -244,6 +270,41 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
     letterSpacing: 0.3,
+  },
+  splash: {
+    flex: 1,
+    backgroundColor: colors.bg.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[4],
+  },
+  splashLogoWrap: {
+    shadowColor: colors.brand.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  splashLogoGrad: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashLogoText: {
+    fontSize: 36,
+    color: colors.white,
+    fontWeight: typography.weight.bold,
+  },
+  splashWordmark: {
+    fontSize: 28,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
+    letterSpacing: 6,
+  },
+  splashSpinner: {
+    marginTop: spacing[2],
   },
 });
 

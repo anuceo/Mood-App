@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   ScrollView,
@@ -15,6 +16,7 @@ import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
 import MoodTag from '../components/MoodTag';
 import { useApp } from '../context/AppContext';
+import { userApi } from '../services/api';
 import { colors, moods, radius, spacing, textStyles, typography } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -46,18 +48,48 @@ const MOCK_BOARDS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const ProfileScreen = ({ navigation }) => {
+const ProfileScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { user, boards, loadBoards } = useApp();
 
-  // Load boards on mount if not yet loaded
-  useEffect(() => {
-    loadBoards();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const viewingHandle = route?.params?.handle;
+  const isOwnProfile = !viewingHandle || viewingHandle === user?.handle;
 
-  // Fall back to mock data when user is not yet available
-  const profile = user ?? MOCK_PROFILE;
+  const [viewedUser, setViewedUser] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Load own boards on mount
+  useEffect(() => {
+    if (isOwnProfile) loadBoards();
+  }, [isOwnProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch another user's profile when a handle param is provided
+  useEffect(() => {
+    if (isOwnProfile) {
+      setViewedUser(null);
+      return;
+    }
+    let cancelled = false;
+    setProfileLoading(true);
+    userApi.getProfile(viewingHandle)
+      .then((data) => { if (!cancelled) setViewedUser(data); })
+      .catch(() => { if (!cancelled) setViewedUser(null); })
+      .finally(() => { if (!cancelled) setProfileLoading(false); });
+    return () => { cancelled = true; };
+  }, [viewingHandle, isOwnProfile]);
+
+  // Resolve which profile data to render
+  const profile = isOwnProfile ? (user ?? MOCK_PROFILE) : (viewedUser ?? MOCK_PROFILE);
   const primaryMoodData = moods[profile.primaryMood] ?? moods[MOCK_PROFILE.primaryMood];
+
+  if (profileLoading) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
+      </View>
+    );
+  }
 
   const handleEditProfile = () => {
     Alert.alert(
@@ -134,7 +166,7 @@ const ProfileScreen = ({ navigation }) => {
           {[
             { value: formatNumber(profile.resonanceCount ?? 0), label: 'resonances' },
             { value: String(profile.contentCount ?? 0), label: 'vibes' },
-            { value: String(user ? boards.length : (profile.boardCount ?? 0)), label: 'boards' },
+            { value: String(isOwnProfile && user ? boards.length : (profile.boardCount ?? 0)), label: 'boards' },
           ].map(({ value, label }) => (
             <GlassCard key={label} style={styles.statCard} intensity="medium">
               <Text style={styles.statValue}>{value}</Text>
@@ -173,7 +205,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={textStyles.heading2}>Boards</Text>
           <View style={styles.boardsGrid}>
-            {(user ? boards : MOCK_BOARDS).map((board) => {
+            {(isOwnProfile && user ? boards : MOCK_BOARDS).map((board) => {
               const moodKey = board.primaryMood ?? board.mood ?? 'dreamy';
               const md = moods[moodKey] ?? moods.dreamy;
               return (
@@ -203,13 +235,23 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* ─── Actions ─── */}
         <View style={styles.actions}>
-          <Button
-            label="Edit Profile"
-            variant="secondary"
-            size="md"
-            fullWidth
-            onPress={handleEditProfile}
-          />
+          {isOwnProfile ? (
+            <Button
+              label="Edit Profile"
+              variant="secondary"
+              size="md"
+              fullWidth
+              onPress={handleEditProfile}
+            />
+          ) : (
+            <Button
+              label="← Back"
+              variant="secondary"
+              size="md"
+              fullWidth
+              onPress={() => navigation?.goBack()}
+            />
+          )}
           <Button
             label="Share Profile"
             variant="ghost"
@@ -237,6 +279,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg.base,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     paddingHorizontal: spacing[5],

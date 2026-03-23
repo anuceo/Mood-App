@@ -143,7 +143,7 @@ const ResonanceButton = ({
       >
         {/* Wave/ripple icon using Unicode — swap for an SVG in production */}
         <Animated.Text style={[styles.icon, { fontSize: sz.iconFontSize, color: iconColor }]}>
-          {resonated ? '〜' : '〜'}
+          {resonated ? '≋' : '〜'}
         </Animated.Text>
       </Animated.View>
 

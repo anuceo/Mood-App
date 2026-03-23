@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Animated,
   RefreshControl,
@@ -34,6 +35,13 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     loadFeed({ mood: feedMoodFilter, page: 1, refresh: true });
   }, [feedMoodFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload feed every time the screen comes into focus (catches new posts made while away)
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed({ mood: feedMoodFilter, page: 1, refresh: true });
+    }, [feedMoodFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const handleRefresh = useCallback(() => {
     loadFeed({ mood: feedMoodFilter, page: 1, refresh: true });

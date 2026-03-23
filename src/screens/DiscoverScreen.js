@@ -191,7 +191,7 @@ const DiscoverScreen = ({ navigation }) => {
                 key={creator.handle}
                 creator={creator}
                 moodData={moodData}
-                onPress={() => navigation?.navigate('Profile')}
+                onPress={() => navigation?.navigate('Profile', { handle: creator.handle })}
               />
             );
           })
