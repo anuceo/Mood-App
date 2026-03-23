@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Animated,
-  FlatList,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -12,7 +11,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ContentCard from '../components/ContentCard';
 import MoodTag from '../components/MoodTag';
-import { colors, moods, moodList, spacing, textStyles } from '../theme';
+import { colors, moodList, spacing, textStyles } from '../theme';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 const MOCK_FEED = [
@@ -161,6 +160,7 @@ const HomeScreen = ({ navigation }) => {
 
       {/* Feed */}
       <Animated.FlatList
+        style={styles.feedList}
         data={filteredFeed}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
@@ -253,6 +253,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing[4],
     alignItems: 'center',
     gap: spacing[5],
+  },
+  feedList: {
+    flex: 1,
   },
   card: {
     // width handled inside ContentCard

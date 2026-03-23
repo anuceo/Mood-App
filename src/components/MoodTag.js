@@ -92,7 +92,7 @@ const MoodTag = ({
         ]}
       >
         {showEmoji && (
-          <Text style={[styles.emoji, sizeStyles.emoji]}>
+          <Text style={sizeStyles.emoji}>
             {moodData.emoji}
           </Text>
         )}
@@ -132,9 +132,6 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: typography.weight.semibold,
     letterSpacing: 0.2,
-  },
-  emoji: {
-    // emoji sizing handled per-size
   },
 });
 

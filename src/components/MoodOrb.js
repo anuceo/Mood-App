@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { moods, radius, textStyles, typography } from '../theme';
+import { moods, typography } from '../theme';
 
 /**
  * MoodOrb — a large, glowing circular button for the mood picker.

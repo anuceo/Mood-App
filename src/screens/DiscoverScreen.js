@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,9 +13,7 @@ import GlassCard from '../components/GlassCard';
 import MoodOrb from '../components/MoodOrb';
 import { colors, moods, moodList, radius, spacing, textStyles, typography } from '../theme';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ─── Mock trending data ───────────────────────────────────────────────────────
+// ─── Mock data ────────────────────────────────────────────────────────────────
 const TRENDING_TAGS = [
   { mood: 'dreamy', count: '42.1K' },
   { mood: 'ethereal', count: '28.7K' },
@@ -42,6 +38,33 @@ const DiscoverScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMood, setSelectedMood] = useState(null);
 
+  const q = searchQuery.toLowerCase().trim();
+
+  // Filter trending tags: match mood label or key against search query and selectedMood
+  const filteredTrending = useMemo(() => {
+    return TRENDING_TAGS.filter(({ mood }) => {
+      const moodData = moods[mood];
+      const matchesSearch = !q || moodData.label.toLowerCase().includes(q) || mood.includes(q);
+      const matchesMood = !selectedMood || mood === selectedMood;
+      return matchesSearch && matchesMood;
+    });
+  }, [q, selectedMood]);
+
+  // Filter creators: match handle or primary mood against search query and selectedMood
+  const filteredCreators = useMemo(() => {
+    return FEATURED_CREATORS.filter((creator) => {
+      const matchesSearch = !q || creator.handle.toLowerCase().includes(q) || creator.primaryMood.includes(q);
+      const matchesMood = !selectedMood || creator.primaryMood === selectedMood;
+      return matchesSearch && matchesMood;
+    });
+  }, [q, selectedMood]);
+
+  const handleMoodOrbPress = (m) => {
+    setSelectedMood((prev) => (prev === m ? null : m));
+    // Clear search when selecting a mood orb so results update cleanly
+    setSearchQuery('');
+  };
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -58,6 +81,7 @@ const DiscoverScreen = ({ navigation }) => {
           { paddingTop: insets.top + spacing[5], paddingBottom: insets.bottom + 90 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Title */}
         <View style={styles.titleRow}>
@@ -75,12 +99,43 @@ const DiscoverScreen = ({ navigation }) => {
             placeholder="Search moods, creators, vibes…"
             placeholderTextColor={colors.text.disabled}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              // Clear mood filter when typing so text search takes over
+              if (text.length > 0) setSelectedMood(null);
+            }}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
           />
+          {searchQuery.length > 0 && (
+            <Text
+              style={styles.clearBtn}
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              ✕
+            </Text>
+          )}
         </View>
+
+        {/* Active filter pill */}
+        {(selectedMood || q) && (
+          <View style={styles.activeFilterRow}>
+            <Text style={styles.activeFilterLabel}>
+              {selectedMood ? `${moods[selectedMood].emoji} ${moods[selectedMood].label}` : `"${q}"`}
+            </Text>
+            <Text
+              style={styles.clearFilter}
+              onPress={() => { setSelectedMood(null); setSearchQuery(''); }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear filter"
+            >
+              Clear
+            </Text>
+          </View>
+        )}
 
         {/* ─── Mood Universe ─── */}
         <SectionHeader label="Mood Universe" />
@@ -91,45 +146,58 @@ const DiscoverScreen = ({ navigation }) => {
               mood={m}
               size={76}
               selected={selectedMood === m}
-              onPress={() => setSelectedMood((prev) => (prev === m ? null : m))}
+              onPress={() => handleMoodOrbPress(m)}
             />
           ))}
         </View>
 
         {/* ─── Trending Moods ─── */}
         <SectionHeader label="Trending" emoji="🔥" />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.trendingRow}
-        >
-          {TRENDING_TAGS.map(({ mood, count }) => {
-            const moodData = moods[mood];
-            return (
-              <GlassCard key={mood} glowColor={moodData.color} style={styles.trendCard}>
-                <LinearGradient
-                  colors={[moodData.dark + '80', 'transparent']}
-                  style={styles.trendGradient}
-                >
-                  <Text style={styles.trendEmoji}>{moodData.emoji}</Text>
-                  <Text style={[styles.trendLabel, { color: moodData.color }]}>
-                    {moodData.label}
-                  </Text>
-                  <Text style={textStyles.caption}>{count} vibes</Text>
-                </LinearGradient>
-              </GlassCard>
-            );
-          })}
-        </ScrollView>
+        {filteredTrending.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.trendingRow}
+          >
+            {filteredTrending.map(({ mood, count }) => {
+              const moodData = moods[mood];
+              return (
+                <GlassCard key={mood} glowColor={moodData.color} style={styles.trendCard}>
+                  <LinearGradient
+                    colors={[moodData.dark + '80', 'transparent']}
+                    style={styles.trendGradient}
+                  >
+                    <Text style={styles.trendEmoji}>{moodData.emoji}</Text>
+                    <Text style={[styles.trendLabel, { color: moodData.color }]}>
+                      {moodData.label}
+                    </Text>
+                    <Text style={textStyles.caption}>{count} vibes</Text>
+                  </LinearGradient>
+                </GlassCard>
+              );
+            })}
+          </ScrollView>
+        ) : (
+          <EmptyState label="No trending moods match" />
+        )}
 
-        {/* ─── Featured Creators ─── */}
+        {/* ─── Rising Creators ─── */}
         <SectionHeader label="Rising Creators" emoji="✨" />
-        {FEATURED_CREATORS.map((creator) => {
-          const moodData = moods[creator.primaryMood];
-          return (
-            <CreatorRow key={creator.handle} creator={creator} moodData={moodData} />
-          );
-        })}
+        {filteredCreators.length > 0 ? (
+          filteredCreators.map((creator) => {
+            const moodData = moods[creator.primaryMood];
+            return (
+              <CreatorRow
+                key={creator.handle}
+                creator={creator}
+                moodData={moodData}
+                onPress={() => navigation?.navigate('Profile')}
+              />
+            );
+          })
+        ) : (
+          <EmptyState label="No creators match" />
+        )}
       </ScrollView>
     </View>
   );
@@ -144,20 +212,21 @@ const SectionHeader = ({ label, emoji }) => (
   </View>
 );
 
-const CreatorRow = ({ creator, moodData }) => (
+const EmptyState = ({ label }) => (
+  <View style={emptyStyles.wrap}>
+    <Text style={emptyStyles.text}>{label}</Text>
+  </View>
+);
+
+const CreatorRow = ({ creator, moodData, onPress }) => (
   <GlassCard style={creatorStyles.card} glowColor={moodData.color} intensity="medium">
     <View style={creatorStyles.inner}>
-      {/* Avatar */}
-      <LinearGradient
-        colors={moodData.gradient}
-        style={[creatorStyles.avatar]}
-      >
+      <LinearGradient colors={moodData.gradient} style={creatorStyles.avatar}>
         <Text style={creatorStyles.avatarText}>
           {creator.handle[0].toUpperCase()}
         </Text>
       </LinearGradient>
 
-      {/* Info */}
       <View style={creatorStyles.info}>
         <Text style={[textStyles.heading3, { color: colors.text.primary }]}>
           @{creator.handle}
@@ -170,7 +239,6 @@ const CreatorRow = ({ creator, moodData }) => (
         </View>
       </View>
 
-      {/* Followers */}
       <View style={creatorStyles.followersBlock}>
         <Text style={[textStyles.heading3, { color: moodData.color }]}>
           {creator.followers}
@@ -227,6 +295,28 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     height: '100%',
   },
+  clearBtn: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    paddingHorizontal: spacing[1],
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[2],
+    marginTop: -spacing[2],
+  },
+  activeFilterLabel: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    fontWeight: typography.weight.medium,
+  },
+  clearFilter: {
+    fontSize: typography.size.sm,
+    color: colors.brand.primary,
+    fontWeight: typography.weight.semibold,
+  },
   orbGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -270,6 +360,17 @@ const sectionStyles = StyleSheet.create({
   },
   emoji: {
     fontSize: 20,
+  },
+});
+
+const emptyStyles = StyleSheet.create({
+  wrap: {
+    paddingVertical: spacing[4],
+    alignItems: 'center',
+  },
+  text: {
+    ...textStyles.bodySmall,
+    fontStyle: 'italic',
   },
 });
 

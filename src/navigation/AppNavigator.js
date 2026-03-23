@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -81,11 +81,10 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           };
 
           return (
-            <View
+            <Pressable
               key={route.key}
               style={tabStyles.tab}
-              onStartShouldSetResponder={() => true}
-              onResponderGrant={onPress}
+              onPress={onPress}
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityState={{ selected: isFocused }}
@@ -103,7 +102,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               >
                 {label}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>

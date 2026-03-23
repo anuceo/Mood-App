@@ -1,12 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Pressable,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 /**
  * ResonanceButton — the core engagement action.
@@ -31,6 +30,15 @@ const ResonanceButton = ({
   const glowOpacity = useRef(new Animated.Value(resonated ? 1 : 0)).current;
   const burstScale = useRef(new Animated.Value(0)).current;
   const burstOpacity = useRef(new Animated.Value(0)).current;
+
+  // Sync glow when resonated prop changes from parent (e.g. initial load with existing resonance)
+  useEffect(() => {
+    Animated.timing(glowOpacity, {
+      toValue: resonated ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [resonated, glowOpacity]);
 
   const handlePress = () => {
     const next = !resonated;

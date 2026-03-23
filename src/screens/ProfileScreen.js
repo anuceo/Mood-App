@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Dimensions,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -47,6 +49,25 @@ const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const profile = MOCK_PROFILE;
   const primaryMoodData = moods[profile.primaryMood];
+
+  const handleEditProfile = () => {
+    Alert.alert(
+      'Edit Profile',
+      'Profile editing coming soon ✦',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const handleShareProfile = async () => {
+    try {
+      await Share.share({
+        message: `Follow @${profile.handle} on Mood — their vibe is ${primaryMoodData.emoji} ${primaryMoodData.label} ✦`,
+        title: `@${profile.handle} on Mood`,
+      });
+    } catch {
+      // Share dialog dismissed — no action needed
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -175,12 +196,14 @@ const ProfileScreen = ({ navigation }) => {
             variant="secondary"
             size="md"
             fullWidth
+            onPress={handleEditProfile}
           />
           <Button
             label="Share Profile"
             variant="ghost"
             size="md"
             fullWidth
+            onPress={handleShareProfile}
           />
         </View>
       </ScrollView>
@@ -227,7 +250,10 @@ const styles = StyleSheet.create({
   },
   avatarGlow: {
     position: 'absolute',
-    inset: -6,
+    top: -6,
+    left: -6,
+    right: -6,
+    bottom: -6,
     borderRadius: 56,
     borderWidth: 2,
     opacity: 0.7,

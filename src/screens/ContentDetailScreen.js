@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import Video from 'react-native-video';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
@@ -14,28 +17,20 @@ import GlassCard from '../components/GlassCard';
 import { BackButton } from '../components/Header';
 import MoodTag from '../components/MoodTag';
 import ResonanceButton from '../components/ResonanceButton';
-import { colors, moods, radius, spacing, textStyles, typography } from '../theme';
+import { colors, moods, spacing, textStyles, typography } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIDEO_HEIGHT = SCREEN_WIDTH * (16 / 9);
 
-/**
- * ContentDetailScreen — full detail view for a single content piece.
- *
- * Shows:
- *   - Full video player (placeholder)
- *   - Mood tags with glow
- *   - Creator info
- *   - Resonance action
- *   - "Add to board" CTA
- *   - Attribution if not original
- */
 const ContentDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const item = route?.params?.item ?? MOCK_ITEM;
 
   const [resonated, setResonated] = useState(false);
   const [resonanceCount, setResonanceCount] = useState(item.resonanceCount);
+  const [paused, setPaused] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef(null);
 
   const primaryMood = item.moodTags?.[0];
   const moodData = primaryMood ? moods[primaryMood] : null;
@@ -44,6 +39,30 @@ const ContentDetailScreen = ({ route, navigation }) => {
     setResonated(next);
     setResonanceCount((c) => c + (next ? 1 : -1));
   };
+
+  const handleAddToBoard = () => {
+    navigation?.navigate('MoodPicker', {
+      onComplete: (selectedMoods) => {
+        // Board logic will hook in here once board management is built
+      },
+    });
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out this ${moodData?.label ?? 'amazing'} vibe by @${item.creatorHandle} on Mood ✦`,
+        url: item.videoUrl,
+        title: 'Share this vibe',
+      });
+    } catch {
+      // Share dialog dismissed — no action needed
+    }
+  };
+
+  const handleVideoPress = () => setPaused((p) => !p);
+
+  const hasVideo = Boolean(item.videoUrl);
 
   return (
     <View style={styles.screen}>
@@ -69,18 +88,40 @@ const ContentDetailScreen = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* ─── Video Player ─── */}
-        <View style={styles.videoWrap}>
-          {/* Placeholder — replace with <Video> component */}
-          <LinearGradient
-            colors={moodData ? moodData.gradient : [colors.bg.surface, colors.bg.elevated]}
-            style={styles.videoPlaceholder}
-          >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={handleVideoPress}
+          style={styles.videoWrap}
+          accessibilityRole="button"
+          accessibilityLabel={paused ? 'Play video' : 'Pause video'}
+        >
+          {hasVideo && !videoError ? (
+            <Video
+              ref={videoRef}
+              source={{ uri: item.videoUrl }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              paused={paused}
+              repeat
+              onError={() => setVideoError(true)}
+              ignoreSilentSwitch="ignore"
+            />
+          ) : (
+            // Fallback gradient when no video URL or video fails to load
+            <LinearGradient
+              colors={moodData ? moodData.gradient : [colors.bg.surface, colors.bg.elevated]}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+
+          {/* Play/Pause overlay — shown when paused */}
+          {paused && (
             <View style={styles.playCircle}>
               <Text style={styles.playIcon}>▶</Text>
             </View>
-          </LinearGradient>
+          )}
 
-          {/* Mood glow strip */}
+          {/* Mood glow strip at bottom of video */}
           {moodData && (
             <View
               style={[
@@ -89,7 +130,7 @@ const ContentDetailScreen = ({ route, navigation }) => {
               ]}
             />
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* ─── Content Info ─── */}
         <View style={styles.infoSection}>
@@ -146,12 +187,14 @@ const ContentDetailScreen = ({ route, navigation }) => {
               variant="primary"
               size="lg"
               fullWidth
+              onPress={handleAddToBoard}
             />
             <Button
               label="Share Vibe"
               variant="secondary"
               size="lg"
               fullWidth
+              onPress={handleShare}
             />
           </View>
         </View>
@@ -186,10 +229,6 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: VIDEO_HEIGHT,
     backgroundColor: colors.bg.surface,
-    position: 'relative',
-  },
-  videoPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },

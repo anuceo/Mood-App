@@ -1,6 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Animated,
   Dimensions,
   ScrollView,
   StatusBar,
@@ -27,7 +26,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MoodPickerScreen = ({ navigation, onComplete }) => {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState([]);
-  const bgAnim = useRef(new Animated.Value(0)).current;
 
   const primaryMood = selected[0] ? moods[selected[0]] : null;
 

@@ -187,7 +187,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    backdropFilter: 'blur(8px)', // iOS only; use BlurView component for Android
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
   },
