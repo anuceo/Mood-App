@@ -11,44 +11,55 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MoodPickerScreen from '../screens/MoodPickerScreen';
 import ContentDetailScreen from '../screens/ContentDetailScreen';
+import UploadScreen from '../screens/UploadScreen';
+import AuthScreen from '../screens/AuthScreen';
 
+import { useApp } from '../context/AppContext';
 import { colors, radius, spacing, typography } from '../theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// ─── Tab Icons ────────────────────────────────────────────────────────────────
+// ─── Tab icon map ─────────────────────────────────────────────────────────────
 
 const TAB_ICONS = {
-  Home: { default: '⌂', active: '⌂' },
-  Discover: { default: '✦', active: '✦' },
-  Profile: { default: '◎', active: '◎' },
+  Home: '⌂',
+  Discover: '✦',
+  Upload: '＋',
+  Profile: '◎',
 };
 
-const TabIcon = ({ route, focused, color }) => {
-  const icon = TAB_ICONS[route.name];
-  return (
-    <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
-      {focused && (
-        <View
-          style={[
-            tabStyles.iconGlow,
-            {
-              shadowColor: colors.brand.primary,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 12,
-              elevation: 8,
-            },
-          ]}
-        />
-      )}
-      <Text style={[tabStyles.iconText, { color }]}>
-        {focused ? icon.active : icon.default}
-      </Text>
-    </View>
-  );
-};
+const TabIcon = ({ name, focused, color }) => (
+  <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+    {focused && (
+      <View
+        style={[
+          styles.iconGlow,
+          {
+            shadowColor: colors.brand.primary,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.8,
+            shadowRadius: 12,
+            elevation: 8,
+          },
+        ]}
+      />
+    )}
+    {name === 'Upload' ? (
+      // Upload button has a distinct pill treatment
+      <LinearGradient
+        colors={[colors.brand.primary, '#A855F7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.uploadIcon}
+      >
+        <Text style={styles.uploadIconText}>＋</Text>
+      </LinearGradient>
+    ) : (
+      <Text style={[styles.iconText, { color }]}>{TAB_ICONS[name]}</Text>
+    )}
+  </View>
+);
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 
@@ -56,14 +67,13 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[tabStyles.container, { paddingBottom: insets.bottom + spacing[2] }]}>
-      {/* Frosted glass background */}
+    <View style={[styles.container, { paddingBottom: insets.bottom + spacing[2] }]}>
       <LinearGradient
         colors={[`${colors.bg.base}00`, colors.bg.base]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <View style={tabStyles.bar}>
+      <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const label = options.tabBarLabel ?? options.title ?? route.name;
@@ -83,25 +93,27 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           return (
             <Pressable
               key={route.key}
-              style={tabStyles.tab}
+              style={styles.tab}
               onPress={onPress}
               accessibilityRole="button"
               accessibilityLabel={label}
               accessibilityState={{ selected: isFocused }}
             >
               <TabIcon
-                route={route}
+                name={route.name}
                 focused={isFocused}
                 color={isFocused ? colors.brand.primary : colors.text.disabled}
               />
-              <Text
-                style={[
-                  tabStyles.label,
-                  { color: isFocused ? colors.brand.primary : colors.text.disabled },
-                ]}
-              >
-                {label}
-              </Text>
+              {route.name !== 'Upload' && (
+                <Text
+                  style={[
+                    styles.label,
+                    { color: isFocused ? colors.brand.primary : colors.text.disabled },
+                  ]}
+                >
+                  {label}
+                </Text>
+              )}
             </Pressable>
           );
         })}
@@ -119,33 +131,47 @@ const MainTabs = () => (
   >
     <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Home' }} />
     <Tab.Screen name="Discover" component={DiscoverScreen} options={{ tabBarLabel: 'Discover' }} />
+    <Tab.Screen name="Upload" component={UploadScreen} options={{ tabBarLabel: '' }} />
     <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
   </Tab.Navigator>
 );
 
-// ─── Root Navigator ───────────────────────────────────────────────────────────
+// ─── Root Navigator — auth gate ───────────────────────────────────────────────
 
-const AppNavigator = () => (
-  <NavigationContainer>
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
-      <Stack.Screen name="Main" component={MainTabs} />
-      <Stack.Screen
-        name="ContentDetail"
-        component={ContentDetailScreen}
-        options={{ animation: 'slide_from_bottom' }}
-      />
-      <Stack.Screen
-        name="MoodPicker"
-        component={MoodPickerScreen}
-        options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-      />
-    </Stack.Navigator>
-  </NavigationContainer>
-);
+const AppNavigator = () => {
+  const { user, authLoading } = useApp();
+
+  // While restoring the stored token show nothing (splash would go here)
+  if (authLoading) return null;
+
+  return (
+    <NavigationContainer>
+      {user ? (
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
+          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen
+            name="ContentDetail"
+            component={ContentDetailScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="MoodPicker"
+            component={MoodPickerScreen}
+            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+          />
+        </Stack.Navigator>
+      ) : (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        </Stack.Navigator>
+      )}
+    </NavigationContainer>
+  );
+};
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const tabStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -175,9 +201,9 @@ const tabStyles = StyleSheet.create({
     paddingVertical: spacing[1],
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -187,14 +213,32 @@ const tabStyles = StyleSheet.create({
   },
   iconGlow: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'transparent',
   },
   iconText: {
     fontSize: 20,
     lineHeight: 24,
+  },
+  uploadIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.brand.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  uploadIconText: {
+    fontSize: 22,
+    color: colors.white,
+    fontWeight: '300',
+    lineHeight: 26,
   },
   label: {
     fontSize: typography.size.xs,

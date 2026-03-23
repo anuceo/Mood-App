@@ -17,6 +17,7 @@ import GlassCard from '../components/GlassCard';
 import { BackButton } from '../components/Header';
 import MoodTag from '../components/MoodTag';
 import ResonanceButton from '../components/ResonanceButton';
+import { useApp } from '../context/AppContext';
 import { colors, moods, spacing, textStyles, typography } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -26,18 +27,20 @@ const ContentDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const item = route?.params?.item ?? MOCK_ITEM;
 
-  const [resonated, setResonated] = useState(false);
-  const [resonanceCount, setResonanceCount] = useState(item.resonanceCount);
+  const { toggleResonate } = useApp();
   const [paused, setPaused] = useState(true);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
 
+  // Resonance state comes from item prop (kept in sync by context / feed reducer)
+  const resonated = item.resonated ?? false;
+  const resonanceCount = item.resonanceCount ?? 0;
+
   const primaryMood = item.moodTags?.[0];
   const moodData = primaryMood ? moods[primaryMood] : null;
 
-  const handleResonate = (next) => {
-    setResonated(next);
-    setResonanceCount((c) => c + (next ? 1 : -1));
+  const handleResonate = () => {
+    toggleResonate(item._id, resonated);
   };
 
   const handleAddToBoard = () => {
@@ -165,6 +168,7 @@ const ContentDetailScreen = ({ route, navigation }) => {
               onToggle={handleResonate}
               size="lg"
             />
+
           </View>
 
           {/* Divider */}

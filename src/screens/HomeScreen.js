@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
   RefreshControl,
@@ -11,84 +11,38 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ContentCard from '../components/ContentCard';
 import MoodTag from '../components/MoodTag';
+import { useApp } from '../context/AppContext';
 import { colors, moodList, spacing, textStyles } from '../theme';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_FEED = [
-  {
-    _id: '1',
-    videoUrl: 'https://example.com/video1.mp4',
-    thumbnailUrl: null,
-    moodTags: ['dreamy', 'calm'],
-    creatorHandle: 'solstice.vibe',
-    attributionUrl: null,
-    isOriginal: true,
-    resonanceCount: 2847,
-  },
-  {
-    _id: '2',
-    videoUrl: 'https://example.com/video2.mp4',
-    thumbnailUrl: null,
-    moodTags: ['energized', 'happy'],
-    creatorHandle: 'neonpulse',
-    attributionUrl: null,
-    isOriginal: true,
-    resonanceCount: 1203,
-  },
-  {
-    _id: '3',
-    videoUrl: 'https://example.com/video3.mp4',
-    thumbnailUrl: null,
-    moodTags: ['nostalgic'],
-    creatorHandle: 'cassette_ghost',
-    attributionUrl: 'tumblr.com',
-    isOriginal: false,
-    resonanceCount: 8521,
-  },
-  {
-    _id: '4',
-    videoUrl: 'https://example.com/video4.mp4',
-    thumbnailUrl: null,
-    moodTags: ['ethereal', 'dreamy'],
-    creatorHandle: 'aurora.bits',
-    attributionUrl: null,
-    isOriginal: true,
-    resonanceCount: 345,
-  },
-  {
-    _id: '5',
-    videoUrl: 'https://example.com/video5.mp4',
-    thumbnailUrl: null,
-    moodTags: ['cozy', 'melancholy'],
-    creatorHandle: 'rainy.window',
-    attributionUrl: null,
-    isOriginal: true,
-    resonanceCount: 6700,
-  },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    feedItems,
+    feedMoodFilter,
+    feedLoading,
+    feedRefreshing,
+    feedError,
+    loadFeed,
+    loadNextPage,
+    setMoodFilter,
+    toggleResonate,
+  } = useApp();
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const filteredFeed = selectedMood
-    ? MOCK_FEED.filter((item) => item.moodTags.includes(selectedMood))
-    : MOCK_FEED;
+  // Initial load and reload when mood filter changes
+  useEffect(() => {
+    loadFeed({ mood: feedMoodFilter, page: 1, refresh: true });
+  }, [feedMoodFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1200);
-  }, []);
+    loadFeed({ mood: feedMoodFilter, page: 1, refresh: true });
+  }, [feedMoodFilter, loadFeed]);
 
-  const handleMoodFilter = (mood) => {
-    setSelectedMood((prev) => (prev === mood ? null : mood));
-  };
+  const handleMoodFilter = useCallback((mood) => {
+    setMoodFilter(feedMoodFilter === mood ? null : mood);
+  }, [feedMoodFilter, setMoodFilter]);
 
-  // Header fade on scroll
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 60],
     outputRange: [0, 1],
@@ -100,17 +54,17 @@ const HomeScreen = ({ navigation }) => {
       <ContentCard
         item={item}
         onPress={() => navigation?.navigate('ContentDetail', { item })}
+        onResonate={(contentId) => toggleResonate(contentId, item.resonated)}
         style={styles.card}
       />
     ),
-    [navigation]
+    [navigation, toggleResonate]
   );
 
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Ambient background gradient */}
       <LinearGradient
         colors={[colors.bg.base, '#0D0B1E', colors.bg.base]}
         locations={[0, 0.5, 1]}
@@ -118,7 +72,7 @@ const HomeScreen = ({ navigation }) => {
         pointerEvents="none"
       />
 
-      {/* Floating header (fades in on scroll) */}
+      {/* Scroll-fading header backdrop */}
       <Animated.View
         pointerEvents="none"
         style={[styles.headerBg, { opacity: headerOpacity, paddingTop: insets.top }]}
@@ -129,9 +83,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.titleRow}>
           <View>
             <Text style={textStyles.displayMedium}>For You</Text>
-            <Text style={[textStyles.body, styles.subtitle]}>
-              tuned to your vibe
-            </Text>
+            <Text style={[textStyles.body, styles.subtitle]}>tuned to your vibe</Text>
           </View>
           <View style={styles.logoMark}>
             <Text style={styles.logoEmoji}>〜</Text>
@@ -149,10 +101,9 @@ const HomeScreen = ({ navigation }) => {
             <MoodTag
               key={m}
               mood={m}
-              selected={selectedMood === m}
+              selected={feedMoodFilter === m}
               onPress={() => handleMoodFilter(m)}
               size="md"
-              style={styles.moodFilterTag}
             />
           ))}
         </Animated.ScrollView>
@@ -161,7 +112,7 @@ const HomeScreen = ({ navigation }) => {
       {/* Feed */}
       <Animated.FlatList
         style={styles.feedList}
-        data={filteredFeed}
+        data={feedItems}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         contentContainerStyle={[styles.feedContent, { paddingBottom: insets.bottom + 90 }]}
@@ -171,20 +122,30 @@ const HomeScreen = ({ navigation }) => {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
+        onEndReached={loadNextPage}
+        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={feedRefreshing}
             onRefresh={handleRefresh}
             tintColor={colors.brand.primary}
             colors={[colors.brand.primary]}
           />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🌙</Text>
-            <Text style={[textStyles.heading3, styles.emptyTitle]}>No vibes here yet</Text>
-            <Text style={textStyles.body}>Try a different mood filter</Text>
-          </View>
+          feedLoading ? null : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>
+                {feedError ? '⚠️' : '🌙'}
+              </Text>
+              <Text style={[textStyles.heading3, styles.emptyTitle]}>
+                {feedError ? 'Could not load feed' : 'No vibes here yet'}
+              </Text>
+              <Text style={textStyles.body}>
+                {feedError ? feedError : 'Try a different mood filter'}
+              </Text>
+            </View>
+          )
         }
       />
     </View>
@@ -246,20 +207,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     gap: spacing[2],
   },
-  moodFilterTag: {
-    // individual tag style, spacing handled by gap
+  feedList: {
+    flex: 1,
   },
   feedContent: {
     paddingTop: spacing[4],
     alignItems: 'center',
     gap: spacing[5],
   },
-  feedList: {
-    flex: 1,
-  },
-  card: {
-    // width handled inside ContentCard
-  },
+  card: {},
   empty: {
     alignItems: 'center',
     paddingTop: spacing[20],

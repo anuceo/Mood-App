@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
   Dimensions,
@@ -33,12 +33,14 @@ const CARD_HEIGHT = CARD_WIDTH * (16 / 9);
  *   style
  */
 const ContentCard = ({ item, onPress, onResonate, style }) => {
-  const [resonated, setResonated] = useState(false);
-  const [resonanceCount, setResonanceCount] = useState(item?.resonanceCount ?? 0);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const primaryMood = item?.moodTags?.[0];
   const moodData = primaryMood ? moods[primaryMood] : null;
+
+  // Resonance state is fully driven by the item prop (managed by AppContext)
+  const resonated = item?.resonated ?? false;
+  const resonanceCount = item?.resonanceCount ?? 0;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -58,10 +60,8 @@ const ContentCard = ({ item, onPress, onResonate, style }) => {
     }).start();
   };
 
-  const handleResonate = (next) => {
-    setResonated(next);
-    setResonanceCount((c) => c + (next ? 1 : -1));
-    onResonate?.(item?._id, next);
+  const handleResonate = () => {
+    onResonate?.(item?._id);
   };
 
   return (
